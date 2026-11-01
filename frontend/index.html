@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Movie Note | 영화 평점 서비스</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #f3f5fa;
+      color: #202538;
+      font-family: system-ui, sans-serif;
+    }
+    main { max-width: 960px; margin: 36px auto; padding: 0 20px; }
+    h1 { margin-bottom: 8px; }
+    h2 { margin-top: 0; font-size: 21px; }
+    .intro { color: #61697c; margin-bottom: 26px; }
+    .panel {
+      background: white;
+      border: 1px solid #e0e4ee;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+      margin: 10px 0;
+      flex-wrap: wrap;
+    }
+    input {
+      flex: 1;
+      min-width: 160px;
+      padding: 12px;
+      border: 1px solid #bdc5d7;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+    button {
+      background: #4354d9;
+      color: white;
+      border: 0;
+      border-radius: 8px;
+      padding: 12px 18px;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .6; cursor: wait; }
+    .message { margin: 8px 0; font-weight: 600; }
+    .trace { color: #667085; font-size: 12px; overflow-wrap: anywhere; }
+    .rating {
+      background: #f7f8fc;
+      border-radius: 10px;
+      padding: 16px;
+      margin-top: 12px;
+    }
+    .rating h3 { margin: 0 0 8px; }
+    .rating p { margin: 7px 0; }
+    .stars { color: #a86b00; }
+    .muted { color: #667085; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="muted">UMC · 영화 평점 서비스</p>
+      <h1>Movie Note</h1>
+      <p class="intro">회원 정보를 확인하고, 회원이 남긴 영화 평점을 살펴보세요.</p>
+    </header>
+
+    <section class="panel">
+      <h2>회원 정보 확인</h2>
+
+      <label for="nickname">닉네임</label>
+      <div class="row">
+        <input id="nickname" value="수현" autocomplete="off">
+        <button id="nicknameButton" type="button">닉네임 중복 확인</button>
+      </div>
+      <p id="nicknameMessage" class="message">중복 확인 전입니다.</p>
+      <p id="nicknameTrace" class="trace"></p>
+
+      <label for="email">이메일</label>
+      <div class="row">
+        <input id="email" type="email" value="noco@umc.com">
+        <button id="emailButton" type="button">이메일 중복 확인</button>
+      </div>
+      <p id="emailMessage" class="message">중복 확인 전입니다.</p>
+      <p id="emailTrace" class="trace"></p>
+    </section>
+
+    <section class="panel">
+      <h2>회원별 영화 평점</h2>
+      <label for="memberId">회원 ID</label>
+      <div class="row">
+        <input id="memberId" type="number" min="1" value="1">
+        <button id="ratingsButton" type="button">평점 불러오기</button>
+      </div>
+      <p id="ratingsMessage" class="message">회원 ID로 평점을 조회해보세요.</p>
+      <p id="ratingsTrace" class="trace"></p>
+      <div id="ratingsList"></div>
+    </section>
+  </main>
+
+  <script>
+    const API_BASE = "http://localhost:8080";
+    const $ = (id) => document.getElementById(id);
+
+    async function request(path, traceId) {
+      const url = API_BASE + path;
+      $(traceId).textContent = "GET " + url + " · 요청 중";
+      const response = await fetch(url);
+
+      $(traceId).textContent =
+        "GET " + url + " · HTTP " + response.status;
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error("요청한 회원 또는 API를 찾을 수 없습니다.");
+        }
+        throw new Error("서버 요청 실패: HTTP " + response.status);
+      }
+
+      return response.json();
+    }
+
+    async function checkDuplicate(type, label) {
+      const button = $(type + "Button");
+      const message = $(type + "Message");
+      const trace = $(type + "Trace");
+      const value = $(type).value.trim();
+
+      trace.textContent = "";
+      if (!value) {
+        message.textContent = label + "을(를) 입력해주세요.";
+        return;
+      }
+
+      button.disabled = true;
+      message.textContent = "확인 중입니다.";
+
+      try {
+        const data = await request(
+          "/members/" + type + "/" + encodeURIComponent(value),
+          type + "Trace"
+        );
+
+        message.textContent = data.available
+          ? "사용 가능한 " + label + "입니다."
+          : "이미 사용 중인 " + label + "입니다.";
+
+        trace.textContent += " · available: " + data.available;
+      } catch (error) {
+        message.textContent = "확인 실패: " + error.message;
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function loadRatings() {
+      const button = $("ratingsButton");
+      const memberId = $("memberId").value.trim();
+      const message = $("ratingsMessage");
+      const list = $("ratingsList");
+
+      list.replaceChildren();
+      $("ratingsTrace").textContent = "";
+
+      if (!/^[1-9]\d*$/.test(memberId)) {
+        message.textContent = "양의 정수 회원 ID를 입력해주세요.";
+        return;
+      }
+
+      button.disabled = true;
+      message.textContent = "평점을 불러오는 중입니다.";
+
+      try {
+        const ratings = await request(
+          "/members/" + memberId + "/ratings",
+          "ratingsTrace"
+        );
+
+        message.textContent = ratings.length
+          ? memberId + "번 회원의 평점 " + ratings.length + "건"
+          : "아직 작성한 평점이 없습니다.";
+
+        ratings.forEach((rating) => {
+          const card = document.createElement("article");
+          card.className = "rating";
+
+          const title = document.createElement("h3");
+          title.textContent = "영화 #" + rating.movieId;
+
+          const score = document.createElement("p");
+          score.className = "stars";
+          score.textContent =
+            "★".repeat(rating.score) +
+            "☆".repeat(5 - rating.score) +
+            " · " + rating.score + "/5";
+
+          const comment = document.createElement("p");
+          comment.textContent = rating.comment || "코멘트 없음";
+
+          const meta = document.createElement("p");
+          meta.className = "muted";
+          meta.textContent =
+            "평점 ID " + rating.ratingId +
+            " · 작성 " + rating.createdAt.replace("T", " ") +
+            " · 수정 " + rating.updatedAt.replace("T", " ");
+
+          card.append(title, score, comment, meta);
+          list.append(card);
+        });
+      } catch (error) {
+        message.textContent = "조회 실패: " + error.message;
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    $("nicknameButton").addEventListener("click", () => {
+      checkDuplicate("nickname", "닉네임");
+    });
+
+    $("emailButton").addEventListener("click", () => {
+      checkDuplicate("email", "이메일");
+    });
+
+    $("ratingsButton").addEventListener("click", loadRatings);
+  </script>
+</body>
+</html>
