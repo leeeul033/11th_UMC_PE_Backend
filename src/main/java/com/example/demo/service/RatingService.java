@@ -1,6 +1,10 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.CreateRatingRequest;
 import com.example.demo.dto.RatingResponse;
+import com.example.demo.dto.UpdateRatingRequest;
+import com.example.demo.entity.Member;
+import com.example.demo.entity.Rating;
 import com.example.demo.repository.MemberRepository;
 import com.example.demo.repository.RatingRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,5 +36,71 @@ public class RatingService {
                 .stream()
                 .map(RatingResponse::from)
                 .toList();
+    }
+
+    @Transactional
+    public Long create(Long memberId, CreateRatingRequest request) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "존재하지 않는 유저입니다."
+                ));
+
+        boolean exists =
+                ratingRepository.existsByMember_MemberIdAndMovieId(
+                        memberId,
+                        request.movieId()
+                );
+
+        if (exists) {
+            throw new IllegalArgumentException(
+                    "이미 이 영화에 평점을 남기셨습니다."
+            );
+        }
+
+        Rating rating = Rating.builder()
+                .member(member)
+                .movieId(request.movieId())
+                .score(request.score())
+                .comment(request.comment())
+                .build();
+
+        return ratingRepository.save(rating).getRatingId();
+    }
+
+    @Transactional
+    public void update(
+            Long ratingId,
+            Long memberId,
+            UpdateRatingRequest request
+    ) {
+        Rating rating = findOwnedRating(ratingId, memberId);
+
+        rating.update(request.score(), request.comment());
+        ratingRepository.save(rating);
+    }
+
+    @Transactional
+    public void delete(Long ratingId, Long memberId) {
+        Rating rating = findOwnedRating(ratingId, memberId);
+
+        ratingRepository.delete(rating);
+    }
+
+    private Rating findOwnedRating(Long ratingId, Long memberId) {
+        Rating rating = ratingRepository.findById(ratingId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "존재하지 않는 평점입니다."
+                ));
+
+        if (!rating.getMember().getMemberId().equals(memberId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "본인이 작성한 평점만 수정하거나 삭제할 수 있습니다."
+            );
+        }
+
+        return rating;
     }
 }
