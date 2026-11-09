@@ -4,6 +4,7 @@ import com.example.demo.dto.ApiResponse;
 import com.example.demo.dto.EmailCheckResponse;
 import com.example.demo.dto.MemberInfoResponse;
 import com.example.demo.dto.MemberResponse;
+import com.example.demo.dto.MemberUpdateRequest;
 import com.example.demo.dto.NicknameCheckResponse;
 import com.example.demo.dto.SignUpRequest;
 import com.example.demo.interceptor.AuthInterceptor;
@@ -12,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
@@ -34,6 +36,21 @@ public class MemberController {
 
         return ResponseEntity.ok(
                 ApiResponse.ok("회원 정보를 조회했습니다.", response)
+        );
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<ApiResponse<MemberInfoResponse>> updateMyInfo(
+            @RequestAttribute(AuthInterceptor.MEMBER_ID) Long memberId,
+            @Valid @RequestBody MemberUpdateRequest request
+    ) {
+        MemberInfoResponse response = memberService.updateMyInfo(
+                memberId,
+                request
+        );
+
+        return ResponseEntity.ok(
+                ApiResponse.ok("회원 정보를 수정했습니다.", response)
         );
     }
 
