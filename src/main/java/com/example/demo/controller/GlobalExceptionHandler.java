@@ -7,6 +7,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
+import com.example.demo.exception.ApiException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -59,5 +60,10 @@ public class GlobalExceptionHandler {
                         "COMMON" + status,
                         exception.getReason()
                 ));
+    }
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<ApiResponse<Void>> handleApiException(ApiException exception) {
+        return ResponseEntity.status(exception.getStatus())
+                .body(ApiResponse.failure(exception.getCode(), exception.getMessage()));
     }
 }
