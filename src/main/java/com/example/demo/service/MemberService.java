@@ -1,12 +1,16 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.EmailCheckResponse;
+import com.example.demo.dto.MemberInfoResponse;
 import com.example.demo.dto.MemberResponse;
+import com.example.demo.dto.MemberUpdateRequest;
 import com.example.demo.dto.NicknameCheckResponse;
 import com.example.demo.dto.SignUpRequest;
 import com.example.demo.entity.Member;
+import com.example.demo.exception.ApiException;
 import com.example.demo.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,5 +61,46 @@ public class MemberService {
                 savedMember.getEmail(),
                 savedMember.getNickname()
         );
+    }
+
+    @Transactional(readOnly = true)
+    public MemberInfoResponse getMyInfo(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND,
+                        "MEMBER404_1",
+                        "해당 회원을 찾을 수 없습니다."
+                ));
+
+        return MemberInfoResponse.from(member);
+    }
+
+    @Transactional
+    public MemberInfoResponse updateMyInfo(
+            Long memberId,
+            MemberUpdateRequest request
+    ) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND,
+                        "MEMBER404_1",
+                        "해당 회원을 찾을 수 없습니다."
+                ));
+
+        if (memberRepository.existsByNicknameAndMemberIdNot(
+                request.nickname(),
+                memberId
+        )) {
+            throw new ApiException(
+                    HttpStatus.CONFLICT,
+                    "MEMBER409_1",
+                    "이미 사용 중인 닉네임입니다."
+            );
+        }
+
+        member.updateNickname(request.nickname());
+        memberRepository.save(member);
+
+        return MemberInfoResponse.from(member);
     }
 }
