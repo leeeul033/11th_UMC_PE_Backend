@@ -89,6 +89,10 @@ public class FavoriteController {
     }
 
     @GetMapping
+    @Operation(
+            summary = "내 즐겨찾기 목록 조회",
+            description = "토큰의 주인인 회원이 등록한 즐겨찾기 목록을 조회합니다. 토큰이 필요합니다. 실패: 401 AUTH401_2(토큰 없음)."
+    )
     public ResponseEntity<ApiResponse<List<FavoriteResponse>>> getMyFavorites(
             @RequestAttribute(AuthInterceptor.MEMBER_ID) Long memberId
     ) {
@@ -97,6 +101,10 @@ public class FavoriteController {
     }
 
     @GetMapping("/{movieId}")
+    @Operation(
+            summary = "즐겨찾기 여부 조회",
+            description = "토큰의 주인인 회원이 특정 영화를 즐겨찾기했는지 조회합니다. 토큰이 필요합니다. 실패: 401 AUTH401_2(토큰 없음)."
+    )
     public ResponseEntity<ApiResponse<FavoriteStatusResponse>> getStatus(
             @RequestAttribute(AuthInterceptor.MEMBER_ID) Long memberId,
             @PathVariable Long movieId
@@ -106,6 +114,10 @@ public class FavoriteController {
     }
 
     @DeleteMapping("/{movieId}")
+    @Operation(
+            summary = "즐겨찾기 해제",
+            description = "토큰의 주인인 회원이 특정 영화를 즐겨찾기에서 제거합니다. 토큰이 필요합니다. 실패: 401 AUTH401_2(토큰 없음), 404 FAVORITE404_1(즐겨찾기하지 않은 영화)."
+    )
     public ResponseEntity<ApiResponse<Void>> delete(
             @RequestAttribute(AuthInterceptor.MEMBER_ID) Long memberId,
             @PathVariable Long movieId
