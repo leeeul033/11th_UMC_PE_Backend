@@ -9,6 +9,10 @@ import com.example.demo.dto.NicknameCheckResponse;
 import com.example.demo.dto.SignUpRequest;
 import com.example.demo.interceptor.AuthInterceptor;
 import com.example.demo.service.MemberService;
+import com.example.demo.config.SwaggerConfig;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -24,10 +28,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/members")
+@Tag(name = "회원", description = "회원가입과 내 정보 API")
 public class MemberController {
 
     private final MemberService memberService;
 
+    @Operation(
+            summary = "내 정보 조회",
+            description = "토큰의 주인인 회원의 정보를 조회합니다. 토큰이 필요합니다. 실패: 401 AUTH401_2(토큰 없음)."
+    )
+    @SecurityRequirement(name = SwaggerConfig.BEARER_AUTH)
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<MemberInfoResponse>> getMyInfo(
             @RequestAttribute(AuthInterceptor.MEMBER_ID) Long memberId
@@ -39,6 +49,11 @@ public class MemberController {
         );
     }
 
+    @Operation(
+            summary = "내 정보 수정",
+            description = "토큰의 주인인 회원의 닉네임을 수정합니다. 토큰이 필요합니다. 실패: 401 AUTH401_2(토큰 없음)."
+    )
+    @SecurityRequirement(name = SwaggerConfig.BEARER_AUTH)
     @PatchMapping("/me")
     public ResponseEntity<ApiResponse<MemberInfoResponse>> updateMyInfo(
             @RequestAttribute(AuthInterceptor.MEMBER_ID) Long memberId,
@@ -68,6 +83,10 @@ public class MemberController {
         return memberService.checkEmail(email);
     }
 
+    @Operation(
+            summary = "회원가입",
+            description = "이메일, 비밀번호, 닉네임으로 회원을 등록합니다. 토큰이 없어도 호출할 수 있는 공개 API입니다."
+    )
     @PostMapping
     public ResponseEntity<ApiResponse<MemberResponse>> signUp(
             @Valid @RequestBody SignUpRequest request
